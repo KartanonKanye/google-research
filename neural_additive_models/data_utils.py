@@ -33,8 +33,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import OneHotEncoder
-import tensorflow.compat.v1 as tf
-gfile = tf.gfile
+from tensorflow import compat as tf
+gfile = tf.v1.gfile
 
 DATA_PATH = 'gs://nam_datasets/data'
 DatasetType = Tuple[np.ndarray, np.ndarray]

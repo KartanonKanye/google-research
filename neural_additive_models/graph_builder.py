@@ -20,16 +20,16 @@ from typing import Union, List, Optional, Tuple, Callable, Dict
 import warnings
 import numpy as np
 from sklearn import metrics as sk_metrics
-import tensorflow.compat.v1 as tf
+from tensorflow import compat as tf
 
-from neural_additive_models import models
+import models
 
 # To suppress warnings in the sigmoid function
 warnings.filterwarnings('ignore')
 TfInput = models.TfInput
-LossFunction = Callable[[tf.keras.Model, TfInput, TfInput], tf.Tensor]
-GraphOpsAndTensors = Dict[str, Union[tf.Tensor, tf.Operation, tf.keras.Model]]
-EvaluationMetric = Callable[[tf.Session], float]
+LossFunction = Callable[[tf.v1.keras.Model, TfInput, TfInput], tf.v1.Tensor]
+GraphOpsAndTensors = Dict[str, Union[tf.v1.Tensor, tf.v1.Operation, tf.v1.keras.Model]]
+EvaluationMetric = Callable[[tf.v1.Session], float]
 
 
 def cross_entropy_loss(model, inputs,
@@ -45,11 +45,11 @@ def cross_entropy_loss(model, inputs,
     Cross-entropy loss between model predictions and the targets.
   """
   predictions = model(inputs, training=True)
-  logits = tf.stack([predictions, tf.zeros_like(predictions)], axis=1)
-  labels = tf.stack([targets, 1 - targets], axis=1)
-  loss_vals = tf.nn.softmax_cross_entropy_with_logits_v2(
+  logits = tf.v1.stack([predictions, tf.v1.zeros_like(predictions)], axis=1)
+  labels = tf.v1.stack([targets, 1 - targets], axis=1)
+  loss_vals = tf.v1.nn.softmax_cross_entropy_with_logits_v2(
       labels=labels, logits=logits)
-  return tf.reduce_mean(loss_vals)
+  return tf.v1.reduce_mean(loss_vals)
 
 
 def penalized_loss(loss_func,
@@ -112,31 +112,31 @@ def feature_output_regularization(model,
   """Penalizes the L2 norm of the prediction of each feature net."""
   per_feature_outputs = model.calc_outputs(inputs, training=False)
   per_feature_norm = [  # L2 Regularization
-      tf.reduce_mean(tf.square(outputs)) for outputs in per_feature_outputs
+      tf.v1.reduce_mean(tf.v1.square(outputs)) for outputs in per_feature_outputs
   ]
-  return tf.add_n(per_feature_norm) / len(per_feature_norm)
+  return tf.v1.add_n(per_feature_norm) / len(per_feature_norm)
 
 
 def weight_decay(model, num_networks = 1):
   """Penalizes the L2 norm of weights in each feature net."""
-  l2_losses = [tf.nn.l2_loss(x) for x in model.trainable_variables]
-  return tf.add_n(l2_losses) / num_networks
+  l2_losses = [tf.v1.nn.l2_loss(x) for x in model.trainable_variables]
+  return tf.v1.add_n(l2_losses) / num_networks
 
 
 def mse_loss(model, inputs,
              targets):
   """Mean squared error loss for regression."""
   predicted = model(inputs, training=True)
-  return tf.losses.mean_squared_error(predicted, targets)
+  return tf.v1.losses.mean_squared_error(predicted, targets)
 
 
 def accuracy(model, inputs,
              targets):
   """Accuracy for a binary classification model."""
   pred = model(inputs, training=False)
-  binary_pred = tf.cast(pred > 0, dtype=tf.int32)
-  correct = tf.equal(binary_pred, tf.cast(targets > 0.5, dtype=tf.int32))
-  return tf.reduce_mean(tf.cast(correct, tf.float32))
+  binary_pred = tf.v1.cast(pred > 0, dtype=tf.v1.int32)
+  correct = tf.v1.equal(binary_pred, tf.v1.cast(targets > 0.5, dtype=tf.v1.int32))
+  return tf.v1.reduce_mean(tf.v1.cast(correct, tf.v1.float32))
 
 
 def generate_predictions(pred_tensor, dataset_init_op,
@@ -145,7 +145,7 @@ def generate_predictions(pred_tensor, dataset_init_op,
 
   Args:
     pred_tensor: Nested structure representing the next prediction element
-      obtained from the `get_next` call on a `tf.compat.v1.data.Iterator`.
+      obtained from the `get_next` call on a `tf.v1.compat.v1.data.Iterator`.
     dataset_init_op: Dataset iterator initializer for `pred_tensor`.
     sess: Tensorflow session.
 
@@ -157,7 +157,7 @@ def generate_predictions(pred_tensor, dataset_init_op,
   while True:
     try:
       y_pred.extend(sess.run(pred_tensor))
-    except tf.errors.OutOfRangeError:
+    except tf.v1.errors.OutOfRangeError:
       break
   return y_pred
 
@@ -210,7 +210,7 @@ def grad(
   loss_value = loss_fn(model, inputs, targets)
   if train_vars is None:
     train_vars = model.trainable_variables
-  return loss_value, tf.gradients(loss_value, train_vars)
+  return loss_value, tf.v1.gradients(loss_value, train_vars)
 
 
 def create_balanced_dataset(x_train, y_train,
@@ -238,11 +238,11 @@ def create_balanced_dataset(x_train, y_train,
     return (x_train_pos, y_train_pos), (x_train_neg, y_train_neg)
 
   pos, neg = partition_dataset(x_train, y_train)
-  pos_dataset = tf.data.Dataset.from_tensor_slices(pos).apply(
-      tf.data.experimental.shuffle_and_repeat(buffer_size=len(pos[0])))
-  neg_dataset = tf.data.Dataset.from_tensor_slices(neg).apply(
-      tf.data.experimental.shuffle_and_repeat(buffer_size=len(neg[0])))
-  dataset = tf.data.experimental.sample_from_datasets(
+  pos_dataset = tf.v1.data.Dataset.from_tensor_slices(pos).apply(
+      tf.v1.data.experimental.shuffle_and_repeat(buffer_size=len(pos[0])))
+  neg_dataset = tf.v1.data.Dataset.from_tensor_slices(neg).apply(
+      tf.v1.data.experimental.shuffle_and_repeat(buffer_size=len(neg[0])))
+  dataset = tf.v1.data.experimental.sample_from_datasets(
       [pos_dataset, neg_dataset])
   ds_tensors = dataset.batch(batch_size)
   return ds_tensors
@@ -251,7 +251,7 @@ def create_balanced_dataset(x_train, y_train,
 def create_iterators(
     datasets,
     batch_size):
-  """Create tf.Dataset iterators from a tuple of one or more numpy arrays.
+  """Create tf.v1.Dataset iterators from a tuple of one or more numpy arrays.
 
   Args:
     datasets: Single or pair of input numpy arrays containing  features.
@@ -261,10 +261,10 @@ def create_iterators(
     Sampling tensor and Initializable iterator(s) for the input datasets.
   """
   tf_datasets = [
-      tf.data.Dataset.from_tensor_slices(data).batch(batch_size)
+      tf.v1.data.Dataset.from_tensor_slices(data).batch(batch_size)
       for data in datasets
   ]
-  input_iterator = tf.data.Iterator.from_structure(tf_datasets[0].output_types,
+  input_iterator = tf.v1.data.Iterator.from_structure(tf_datasets[0].output_types,
                                                    tf_datasets[0].output_shapes)
   init_ops = [input_iterator.make_initializer(data) for data in tf_datasets]
   x_batch = input_iterator.get_next()
@@ -323,8 +323,8 @@ def build_graph(
 ):
   """Constructs the computation graph with specified hyperparameters."""
   if regression:
-    ds_tensors = tf.data.Dataset.from_tensor_slices((x_train, y_train)).apply(
-        tf.data.experimental.shuffle_and_repeat(buffer_size=len(x_train[0])))
+    ds_tensors = tf.v1.data.Dataset.from_tensor_slices((x_train, y_train)).apply(
+        tf.v1.data.experimental.shuffle_and_repeat(buffer_size=len(x_train[0])))
     ds_tensors = ds_tensors.batch(batch_size)
   else:
     # Create a balanced dataset to handle class imbalance
@@ -346,19 +346,19 @@ def build_graph(
         trainable=trainable,
         name_scope=name_scope)
 
-  global_step = tf.train.get_or_create_global_step()
-  learning_rate = tf.Variable(learning_rate, trainable=False)
+  global_step = tf.v1.train.get_or_create_global_step()
+  learning_rate = tf.v1.Variable(learning_rate, trainable=False)
   lr_decay_op = learning_rate.assign(decay_rate * learning_rate)
-  optimizer = tf.train.AdamOptimizer(learning_rate)
+  optimizer = tf.v1.train.AdamOptimizer(learning_rate)
 
   predictions = nn_model(x_batch, training=False)
-  tf.logging.info(nn_model.summary())
+  tf.v1.logging.info(nn_model.summary())
   train_vars = nn_model.trainable_variables
   if regression:
     loss_fn, y_pred = penalized_mse_loss, predictions
   else:
     # Apply sigmoid transformation for binary classification
-    loss_fn, y_pred = penalized_cross_entropy_loss, tf.nn.sigmoid(predictions)
+    loss_fn, y_pred = penalized_cross_entropy_loss, tf.v1.nn.sigmoid(predictions)
   loss_fn = functools.partial(
       loss_fn,
       output_regularization=output_regularization,
@@ -370,13 +370,13 @@ def build_graph(
   loss_tensor, grads = grad(nn_model, x1, y1, loss_fn, train_vars)
   update_step = optimizer.apply_gradients(
       zip(grads, train_vars), global_step=global_step)
-  avg_loss, avg_loss_update_op = tf.metrics.mean(
+  avg_loss, avg_loss_update_op = tf.v1.metrics.mean(
       loss_tensor, name='avg_train_loss')
-  tf.summary.scalar('avg_train_loss', avg_loss)
+  tf.v1.summary.scalar('avg_train_loss', avg_loss)
 
-  running_mean_vars = tf.get_collection(
-      tf.GraphKeys.LOCAL_VARIABLES, scope='avg_train_loss')
-  running_vars_initializer = tf.variables_initializer(
+  running_mean_vars = tf.v1.get_collection(
+      tf.v1.GraphKeys.LOCAL_VARIABLES, scope='avg_train_loss')
+  running_vars_initializer = tf.v1.variables_initializer(
       var_list=running_mean_vars)
 
   # Use RMSE for regression and ROC AUC for classification.
@@ -392,7 +392,7 @@ def build_graph(
       pred_tensor=y_pred,
       dataset_init_op=test_init_op)
 
-  summary_op = tf.summary.merge_all()
+  summary_op = tf.v1.summary.merge_all()
 
   graph_tensors = {
       'train_op': [update_step, avg_loss_update_op],

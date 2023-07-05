@@ -23,12 +23,12 @@ from typing import Tuple, Iterator, List, Dict
 from absl import app
 from absl import flags
 import numpy as np
-import tensorflow.compat.v1 as tf
+from tensorflow import compat as tf
 
-from neural_additive_models import data_utils
-from neural_additive_models import graph_builder
+import data_utils
+import graph_builder
 
-gfile = tf.io.gfile
+gfile = tf.v1.io.gfile
 DatasetType = data_utils.DatasetType
 
 FLAGS = flags.FLAGS
@@ -47,7 +47,7 @@ flags.DEFINE_float('dropout', 0.5, 'Hyperparameter: Dropout rate')
 flags.DEFINE_integer(
     'data_split', 1, 'Dataset split index to use. Possible '
     'values are 1 to `FLAGS.num_splits`.')
-flags.DEFINE_integer('tf_seed', 1, 'seed for tf.')
+flags.DEFINE_integer('tf_seed', 1, 'seed for tf   .')
 flags.DEFINE_float('feature_dropout', 0.0,
                    'Hyperparameter: Prob. with which features are dropped')
 flags.DEFINE_integer(
@@ -159,15 +159,15 @@ def _create_graph_saver(graph_tensors_and_ops,
   # The MonitoredTraining Session counter increments by `n_models`
   save_steps = save_steps * FLAGS.n_models
   for n in range(FLAGS.n_models):
-    scaffold = tf.train.Scaffold(
-        saver=tf.train.Saver(
+    scaffold = tf.v1.train.Scaffold(
+        saver=tf.v1.train.Saver(
             var_list=graph_tensors_and_ops[n]['nn_model'].trainable_variables,
             save_relative_paths=True,
             max_to_keep=FLAGS.max_checkpoints_to_keep))
     model_dirs.append(os.path.join(logdir, 'model_{}').format(n))
     best_checkpoint_dirs.append(os.path.join(model_dirs[-1], 'best_checkpoint'))
     gfile.makedirs(best_checkpoint_dirs[-1])
-    saver_hook = tf.train.CheckpointSaverHook(
+    saver_hook = tf.v1.train.CheckpointSaverHook(
         checkpoint_dir=model_dirs[-1], save_steps=save_steps, scaffold=scaffold)
     saver_hooks.append(saver_hook)
   return saver_hooks, model_dirs, best_checkpoint_dirs
@@ -188,7 +188,7 @@ def _update_metrics_and_checkpoints(sess,
   # Calculate the AUROC/RMSE on the validation split
   validation_metric = metric_scores['test'](sess)
   if FLAGS.debug:
-    tf.logging.info('Epoch %d %s Val %.4f', epoch, metric_name,
+    tf.v1.logging.info('Epoch %d %s Val %.4f', epoch, metric_name,
                     validation_metric)
   if compare_metric(validation_metric, best_validation_metric):
     curr_best_epoch = epoch
@@ -215,7 +215,7 @@ def training(x_train, y_train, x_validation,
   Returns:
     Best train and validation evaluation metric obtained during NAM training.
   """
-  tf.logging.info('Started training with logdir %s', logdir)
+  tf.v1.logging.info('Started training with logdir %s', logdir)
   batch_size = min(FLAGS.batch_size, x_train.shape[0])
   num_steps_per_epoch = x_train.shape[0] // batch_size
   # Keep track of the best validation RMSE/AUROC and train AUROC score which
@@ -233,23 +233,23 @@ def training(x_train, y_train, x_validation,
   early_stopping = [False] * FLAGS.n_models
   # Classification: AUROC, Regression : RMSE Score
   metric_name = 'RMSE' if FLAGS.regression else 'AUROC'
-  tf.reset_default_graph()
-  with tf.Graph().as_default():
-    tf.compat.v1.set_random_seed(FLAGS.tf_seed)
+  tf.v1.reset_default_graph()
+  with tf.v1.Graph().as_default():
+    tf.v1.compat.v1.set_random_seed(FLAGS.tf_seed)
     # Setup your training.
     graph_tensors_and_ops, metric_scores = _create_computation_graph(
         x_train, y_train, x_validation, y_validation, batch_size)
 
     train_ops, lr_decay_ops = _get_train_and_lr_decay_ops(
         graph_tensors_and_ops, early_stopping)
-    global_step = tf.train.get_or_create_global_step()
-    increment_global_step = tf.assign(global_step, global_step + 1)
+    global_step = tf.v1.train.get_or_create_global_step()
+    increment_global_step = tf.v1.assign(global_step, global_step + 1)
     saver_hooks, model_dirs, best_checkpoint_dirs = _create_graph_saver(
         graph_tensors_and_ops, logdir, num_steps_per_epoch)
     if FLAGS.debug:
-      summary_writer = tf.summary.FileWriter(os.path.join(logdir, 'tb_log'))
+      summary_writer = tf.v1.summary.FileWriter(os.path.join(logdir, 'tb_log'))
 
-    with tf.train.MonitoredSession(hooks=saver_hooks) as sess:
+    with tf.v1.train.MonitoredSession(hooks=saver_hooks) as sess:
       for n in range(FLAGS.n_models):
         sess.run([
             graph_tensors_and_ops[n]['iterator_initializer'],
@@ -262,7 +262,7 @@ def training(x_train, y_train, x_validation,
           # Decay the learning rate by a fixed ratio every epoch
           sess.run(lr_decay_ops)
         else:
-          tf.logging.info('All models early stopped at epoch %d', epoch)
+          tf.v1.logging.info('All models early stopped at epoch %d', epoch)
           break
 
         for n in range(FLAGS.n_models):
@@ -284,16 +284,16 @@ def training(x_train, y_train, x_validation,
                  best_validation_metric[n], best_train_metric[n], model_dirs[n],
                  best_checkpoint_dirs[n], metric_name)
             if curr_best_epoch[n] + FLAGS.early_stopping_epochs < epoch:
-              tf.logging.info('Early stopping at epoch {}'.format(epoch))
+              tf.v1.logging.info('Early stopping at epoch {}'.format(epoch))
               early_stopping[n] = True  # Set early stopping for model `n`.
               train_ops, lr_decay_ops = _get_train_and_lr_decay_ops(
                   graph_tensors_and_ops, early_stopping)
           # Reset running variable counters
           sess.run(graph_tensors_and_ops[n]['running_vars_initializer'])
 
-  tf.logging.info('Finished training.')
+  tf.v1.logging.info('Finished training.')
   for n in range(FLAGS.n_models):
-    tf.logging.info(
+    tf.v1.logging.info(
         'Model %d: Best Epoch %d, Individual %s: Train %.4f, Validation %.4f',
         n, curr_best_epoch[n], metric_name, best_train_metric[n],
         best_validation_metric[n])
@@ -306,8 +306,8 @@ def create_test_train_fold(
 ):
   """Splits the dataset into training and held-out test set."""
   data_x, data_y, _ = data_utils.load_dataset(FLAGS.dataset_name)
-  tf.logging.info('Dataset: %s, Size: %d', FLAGS.dataset_name, data_x.shape[0])
-  tf.logging.info('Cross-val fold: %d/%d', FLAGS.fold_num, _N_FOLDS)
+  tf.v1.logging.info('Dataset: %s, Size: %d', FLAGS.dataset_name, data_x.shape[0])
+  tf.v1.logging.info('Cross-val fold: %d/%d', FLAGS.fold_num, _N_FOLDS)
   # Get the training and test set based on the StratifiedKFold split
   (x_train_all, y_train_all), test_dataset = data_utils.get_train_test_fold(
       data_x,
@@ -336,7 +336,7 @@ def single_split_training(data_gen,
 
 def main(argv):
   del argv  # Unused
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.v1.logging.set_verbosity(tf.v1.logging.INFO)
 
   data_gen, _ = create_test_train_fold(FLAGS.fold_num)
   single_split_training(data_gen, FLAGS.logdir)
