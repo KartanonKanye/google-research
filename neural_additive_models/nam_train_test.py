@@ -24,6 +24,7 @@ from absl.testing import parameterized
 from tensorflow import compat as tf
 
 import nam_train
+import data_utils
 
 FLAGS = flags.FLAGS
 
@@ -32,7 +33,7 @@ class NAMTrainingTest(parameterized.TestCase):
   """Tests whether NAMs can be run without error."""
 
   @parameterized.named_parameters(
-      ('regression', 'Housing', True)
+      ('classification', 'BreastCancer', False)
   )
   @flagsaver.flagsaver
   def test_nam(self, dataset_name, regression):
@@ -40,15 +41,15 @@ class NAMTrainingTest(parameterized.TestCase):
     FLAGS.training_epochs = 4
     FLAGS.save_checkpoint_every_n_epochs = 2
     FLAGS.early_stopping_epochs = 2
-    print(dataset_name)
     FLAGS.dataset_name = dataset_name
     FLAGS.regression = regression
     FLAGS.num_basis_functions = 16
     logdir = os.path.join(self.create_tempdir().full_path, dataset_name)
     tf.v1.gfile.MakeDirs(logdir)
-    data_gen, _ = nam_train.create_test_train_fold(fold_num=1)
-    for val in data_gen:
-      print(val[0][0])
+    data_x, data_y, _ = data_utils.load_dataset(FLAGS.dataset_name)
+    data = data_utils.get_train_test_fold(data_x, data_y, 1, 5)
+    nam_train._create_computation_graph(data[0][0], data[0][1], data[1][0], data[1][1], 1024)
+    #data_gen, _ = nam_train.create_test_train_fold(fold_num=1)
     #nam_train.single_split_training(data_gen, logdir)
 
 

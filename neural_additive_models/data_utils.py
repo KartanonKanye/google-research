@@ -25,6 +25,7 @@ import pandas as pd
 
 from sklearn.compose import ColumnTransformer
 from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import KFold
 from sklearn.model_selection import ShuffleSplit
 from sklearn.model_selection import StratifiedKFold
@@ -292,7 +293,7 @@ def load_california_housing_data(
     A dict containing the `problem` type (i.e. regression) and the
     input features `X` as a pandas.Dataframe and the regression targets `y` as
     np.ndarray.
-  """
+  
   feature_names = [
       'MedInc', 'HouseAge', 'AveRooms', 'AveBedrms', 'Population', 'AveOccup',
       'Latitude', 'Longitude'
@@ -307,8 +308,9 @@ def load_california_housing_data(
       # URL resource on lib.stat.cmu.edu
       columns_index = [8, 7, 2, 3, 4, 5, 6, 1, 0]
       cal_housing = cal_housing[:, columns_index]
-
-  target, data = cal_housing[:, 0], cal_housing[:, 1:]
+  """
+  california = fetch_california_housing(as_frame = True)
+  target, data = california['target'], california['data'] 
 
   # avg rooms = total rooms / households
   data[:, 2] /= data[:, 5]
@@ -324,7 +326,7 @@ def load_california_housing_data(
 
   return {
       'problem': 'regression',
-      'X': pd.DataFrame(data, columns=feature_names),
+      'X': data,
       'y': target,
   }
 
