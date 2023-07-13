@@ -9,6 +9,7 @@ import nam_train
 import os
 import tempfile
 import sys
+import pandas as pd
 
 FLAGS = flags.FLAGS
 
@@ -16,6 +17,7 @@ FLAGS(sys.argv)
 
 #Load the data. data_and target is a dictionary with the following key value pairs ('X', data), ('y', target) and ('problem', the type of ML problem.)
 data_and_target = data_utils.load_california_housing_data()
+print(data_and_target['X']['MedInc'])
 
 
 def create_and_train_nam(dataset_name, regression):
@@ -31,7 +33,11 @@ def create_and_train_nam(dataset_name, regression):
     (x_train, y_train), (x_validation, y_validation) = next(data_gen)
     return nam_train.training(x_train, y_train, x_validation, y_validation, logdir)
 
-tensor_ops = create_and_train_nam('Housing', True)
-curr_graph = tf.v1.get_default_graph()
-print(curr_graph.collections)
+#tensor_ops = create_and_train_nam('Housing', True)
+
+#print(FLAGS.featureNNs_outputs)
+
+
+
+
 

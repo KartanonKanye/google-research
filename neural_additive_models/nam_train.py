@@ -77,7 +77,8 @@ flags.DEFINE_boolean('debug', False, 'Debug mode. Log additional things')
 flags.DEFINE_boolean('shallow', False, 'Whether to use shallow or deep NN.')
 flags.DEFINE_boolean('use_dnn', False, 'Deep NN baseline.')
 flags.DEFINE_integer('early_stopping_epochs', 60, 'Early stopping epochs')
-flags.DEFINE_list('nam_model_outputs', [], 'The nam models outputs')
+flags.DEFINE_list('nam_featureNNs', [], 'The nam models neural nets')
+flags.DEFINE_list('featureNNs_outputs', [], 'The nam models neural nets outputs')
 _N_FOLDS = 5
 GraphOpsAndTensors = graph_builder.GraphOpsAndTensors
 EvaluationMetric = graph_builder.EvaluationMetric
@@ -248,9 +249,9 @@ def training(x_train, y_train, x_validation,
     saver_hooks, model_dirs, best_checkpoint_dirs = _create_graph_saver(
         graph_tensors_and_ops, logdir, num_steps_per_epoch)
     if FLAGS.debug:
-      summary_writer = tf.v1.summary.FileWriter(os.path.join(logdir, 'tb_log'))   
-    with tf.v1.train.MonitoredSession(hooks=saver_hooks) as sess: 
-      tf.v1.get_default_graph().add_to_collection('The NAM model', graph_tensors_and_ops[0]['nn_model'])
+      summary_writer = tf.v1.summary.FileWriter(os.path.join(logdir, 'tb_log'))
+    FLAGS.nam_featureNNs.append(graph_tensors_and_ops[0]['nn_model'].calc_outputs(x_train, training = False)[0])
+    with tf.v1.train.MonitoredSession(hooks=saver_hooks) as sess:
       for n in range(FLAGS.n_models):
         sess.run([
             graph_tensors_and_ops[n]['iterator_initializer'],
@@ -288,7 +289,9 @@ def training(x_train, y_train, x_validation,
               train_ops, lr_decay_ops = _get_train_and_lr_decay_ops(
                   graph_tensors_and_ops, early_stopping)
           # Reset running variable counters
-          sess.run(graph_tensors_and_ops[n]['running_vars_initializer'])    
+          sess.run(graph_tensors_and_ops[n]['running_vars_initializer'])
+      FLAGS.featureNNs_outputs.append(sess.run(FLAGS.nam_featureNNs[0]))
+        
   tf.v1.logging.info('Finished training.')
   for n in range(FLAGS.n_models):
     tf.v1.logging.info(
