@@ -293,7 +293,7 @@ def load_california_housing_data(
     A dict containing the `problem` type (i.e. regression) and the
     input features `X` as a pandas.Dataframe and the regression targets `y` as
     np.ndarray.
-  
+  """
   feature_names = [
       'MedInc', 'HouseAge', 'AveRooms', 'AveBedrms', 'Population', 'AveOccup',
       'Latitude', 'Longitude'
@@ -308,9 +308,8 @@ def load_california_housing_data(
       # URL resource on lib.stat.cmu.edu
       columns_index = [8, 7, 2, 3, 4, 5, 6, 1, 0]
       cal_housing = cal_housing[:, columns_index]
-  """
-  california = fetch_california_housing(as_frame = True)
-  target, data = california['target'], california['data'] 
+
+  target, data = cal_housing[:, 0], cal_housing[:, 1:]
 
   # avg rooms = total rooms / households
   data[:, 2] /= data[:, 5]
@@ -323,10 +322,31 @@ def load_california_housing_data(
 
   # target in units of 100,000
   target = target / 100000.0
+  
+  """
+  feature_names = [
+    'Longitude','Latitude', 'HouseAge', 'AveRooms','AveBdrms',  'Population', 'AveOccup', 'MedInc',  
+  ]
 
+  cal_housing = pd.read_csv('./NamCode/Data/CaliforniaHousing/cal_housing.data', delimiter = ",")
+  data1, target = cal_housing.iloc[:, :-1], cal_housing.iloc[:, -1:]
+
+  # avg rooms = total rooms / households
+  data1.iloc[:, 3] = data1.iloc[:, 3] / data1.iloc[:, 6]
+
+  # avg bed rooms = total bed rooms / households
+  data1.iloc[:, 4] = data1.iloc[:, 4] / data1.iloc[:, 6]
+
+  # avg occupancy = population / households
+  data1.iloc[:, 6] = data1.iloc[:, 5] / data1.iloc[:, 6]
+  print(data1.head())
+  data1.columns = feature_names
+  # target in units of 100,000
+  target = target / 100000.0
+"""
   return {
       'problem': 'regression',
-      'X': data,
+      'X': pd.DataFrame(data, columns = feature_names),
       'y': target,
   }
 
