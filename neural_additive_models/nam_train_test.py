@@ -45,13 +45,12 @@ class NAMTrainingTest(parameterized.TestCase):
     FLAGS.dataset_name = dataset_name
     FLAGS.regression = regression
     FLAGS.num_basis_functions = 16
-    logdir = os.path.join(tempfile.mkdtemp(), dataset_name)
-    #logdir = os.path.join(self.create_tempdir().full_path, dataset_name)
-    tf.v1.gfile.MakeDirs(logdir)
+    logdir = './NamCode/google-research/nam_models'
+    #tf.v1.gfile.MakeDirs(logdir)
     data_gen, _ = nam_train.create_test_train_fold(fold_num=1)
     (x_train, y_train), (x_validation, y_validation) = next(data_gen)
-    nam_train.training(x_train, y_train, x_validation, y_validation, logdir)
-    #nam_train.single_split_training(data_gen, logdir)
+    #nam_train.training(x_train, y_train, x_validation, y_validation, logdir)
+    nam_train.single_split_training(data_gen, logdir)
 
 
 if __name__ == '__main__':
