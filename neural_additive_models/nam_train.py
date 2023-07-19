@@ -59,11 +59,11 @@ flags.DEFINE_boolean(
     'cross_val', False, 'Boolean flag indicating whether to '
     'perform cross validation or not.')
 flags.DEFINE_integer(
-    'max_checkpoints_to_keep', 1, 'Indicates the maximum '
+    'max_checkpoints_to_keep', 1000, 'Indicates the maximum '
     'number of recent checkpoint files to keep.')
 flags.DEFINE_integer(
-    'save_checkpoint_every_n_epochs', 10, 'Indicates the '
-    'number of epochs after which an checkpoint is saved')
+    'save_checkpoint_every_n_epochs', 2, 'Indicates the '
+    'number of epochs after which a checkpoint is saved')
 flags.DEFINE_integer('n_models', 1, 'the number of models to train.')
 flags.DEFINE_integer('num_splits', 3, 'Number of data splits to use')
 flags.DEFINE_integer('fold_num', 1, 'Index of the fold to be used')
@@ -249,7 +249,6 @@ def training(x_train, y_train, x_validation,
         graph_tensors_and_ops, logdir, num_steps_per_epoch)
     if FLAGS.debug:
       summary_writer = tf.v1.summary.FileWriter(os.path.join(logdir, 'tb_log'))
-    FLAGS.featureNNs_outputs_tensors.append(graph_tensors_and_ops[0]['nn_model'].calc_outputs(x_train))
     with tf.v1.train.MonitoredSession(hooks=saver_hooks) as sess:
       for n in range(FLAGS.n_models):
         sess.run([
@@ -289,7 +288,6 @@ def training(x_train, y_train, x_validation,
                   graph_tensors_and_ops, early_stopping)
           # Reset running variable counters
           sess.run(graph_tensors_and_ops[n]['running_vars_initializer'])
-      FLAGS.featureNNs_outputs_values.append(sess.run(FLAGS.featureNNs_outputs_tensors[0]))
   tf.v1.logging.info('Finished training.')
   for n in range(FLAGS.n_models):
     tf.v1.logging.info(
