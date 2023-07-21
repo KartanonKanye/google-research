@@ -295,7 +295,7 @@ def training(x_train, y_train, x_validation,
         n, curr_best_epoch[n], metric_name, best_train_metric[n],
         best_validation_metric[n])
 
-  return np.mean(best_train_metric), np.mean(best_validation_metric)
+  return np.mean(best_train_metric), np.mean(best_validation_metric), graph_tensors_and_ops[0]['nn_model']
 
 
 def create_test_train_fold(
